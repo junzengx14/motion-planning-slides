@@ -18,6 +18,9 @@
 \usepackage[style=authortitle,backend=bibtex]{biblatex}
 \addbibresource{references.bib}
 
+\newcommand{\blue}[1]{{\color{blue} #1}}
+\newcommand{\red}[1]{{\color{red} #1}}
+
 \usetheme{Madrid}
 \usecolortheme{default}
 \title[] %optional
@@ -82,28 +85,31 @@
 
 \section{Optimization-based path planning}
 \subsection{General methods}
-\begin{frame}
+\begin{frame}{Mathematical methods}
 	Generally, a optimization problem will satisfy a variety of constraints, this leads us to have different methods to solve them numerically.
 	
 	Some of them have explicit solutions:
 	\begin{itemize}
-		\item algebraic Riccati equation for the LQR problem: $K = R^{-1} (B^T P + N^T)$, where $A^T P + P A - P B R^{-1} B^T P + Q = 0$
 		\item convex quadratic programming (Convex QP)
+		\item LQR: For continuous-system linear system $\dot{x} = Ax + Bu$ with a quadratic cost
+		$J = \int_0^{\infty} (x^T Q x + u^T R u + 2x^T N u) dt$. The feedback control law to minimize the value of the cost is $u = -Kx$, where $K = R^{-1} (B^T P + N^T)$ and $A^T P + P A - (P B + N) R^{-1} (B^T P + N^T) + Q = 0$. Here, the control law could be solved \red{explicitly}. 
 	\end{itemize}
 \end{frame}
 
-\begin{frame}
-	Others don't have explicit solution and don't guarantee existing solution but could be solved numerically:
+\begin{frame}{Numerical methods}
+	Other general problems don't have explicit solutions and don't guarantee existing solution but could be solved numerically:
+	
+	An optimization-based path planning problem could be formulated as several types:
 	\begin{itemize}
 		\item Shooting methods: we 'shoot' out trajectories in different directions until we find a trajectory that has the desired boundary value.
 		\item Collocation methods: choose a finite-dimensional space of candidate solutions (e.g. polynomials) and a number of points in the domain (called collocation points), and to select that solution which satisfies the given equation at the collocation points.
 	\end{itemize}
 \end{frame}
 
-\begin{frame}
-	Most likely, all problems could be formulated into a dynamic programming problem and could be solved with various numerical methods:
+\begin{frame}{Solvers and existence of solutions}
+	Most likely, all problems could be formulated into a dynamic programming problem and could be solved with various numerical solvers\footnote{More mathematical details for solving optimization problem are presented in EE 227A/B/C.}:
 	\begin{itemize}
-		\item for convex problems: Gurobi, Sedumi
+		\item for convex problems:
 		\begin{itemize}
 			\item software: CVX, OSQP
 			\item internal solvers: Gurobi, Sedumi, Mosek  
@@ -114,10 +120,9 @@
 			\item active set method: SAS
 		\end{itemize}
 	\end{itemize}
+	\vspace{\baselineskip}
 
-	We are more interested in the existence of the solution of the optimization. For a convex problem, we are likely to ensure at least one solution (might have several ones if it's nonlinear or non-convex cost function, our numerical solution will depends on the initial point where we do gradient descent).
-	
-	But for general non-convex problem, we are not able to guarantee the existence of solution. 
+	We are more interested in the existence of the solution of the optimization. For a convex problem, we are likely to ensure at least one solution (might have several ones if it's nonlinear or non-convex cost function, our numerical solution will depends on the initial point where we do gradient descent). But for general non-convex problem, we are \red{unable to} guarantee the existence of solution. 
 \end{frame}
 
 \subsection{Examples}
@@ -125,21 +130,26 @@
 	One of the most applicable areas about optimization-based planning is trajectory smoothing, which intends to make trajectory generated from the sample-based methods (RRT, PRM, etc) become smoother.
 	\begin{figure}
 		\includegraphics[width=0.5\linewidth]{figures/trajectory-smooth.jpg}
+		\caption{Make your trajectory smoother}
 	\end{figure}
 \end{frame}
 
-\begin{frame}{Geometric methods}
+\begin{frame}{Geometric interpolation}
 	There are some traditional geometric methods for trajectory smoothing:
 	\begin{itemize}
 		\item Polynomial interpolation
-		\item Bezier Curve
+		\item Bezier Curve \href{https://www.geogebra.org/m/r3UWE9KR}{[online playground]}
 		\item Cubic Splines
 		\item B-Splined
 	\end{itemize}
+	\begin{figure}
+		\includegraphics[width=0.5\linewidth]{figures/bezier_curve.png}
+		\caption{Bezier Curve}
+	\end{figure}
 \end{frame}
 
-\begin{frame}{Geometric methods}
-	In industry, they prefer some special curves which are easy to be implemented:
+\begin{frame}{Special curves for smoothness}
+	In industry, people prefer some special curves which are easy to be implemented with less complexity:
 	\begin{itemize}
 		\item Dubin’s Curve (e.g. lane change in autonomous driving)
 		\includegraphics[width=0.5\linewidth]{figures/dubin-curve.png}
@@ -156,7 +166,7 @@
 
 \begin{frame}{Related work}
 	\begin{itemize}
-		\item "Time Elastic Band" planner (TEB Planner) with ROS integration is introduced \footcite{rosmann2012trajectory} \footcite{rosmann2013efficient}, where non-holonomic kinematics is considered, but roughtly.
+		\item "Time Elastic Band" planner (TEB Planner) with ROS integration is introduced \footcite{rosmann2012trajectory} \footcite{rosmann2013efficient}, where non-holonomic kinematics is considered, but roughtly. \href{https://www.youtube.com/watch?v=e1Bw6JOgHME&feature=emb_title}{[demo video in ROS]}
 		\item Some receding horizon methods are also introduced \footcite{kogan2006optimization}.
 		\item For autonomous driving, some special techniques are also proposed \footcite{dolgov2010path} \footcite{ziegler2014trajectory} \footcite{gu2012road}.
 	\end{itemize}
@@ -187,16 +197,15 @@
 \end{frame}
 
 \begin{frame}{Obstacle avoidance}
-	To make the problem become convex, an mixed-integer formulation could be introduced \footcite{richards2002aircraft} \footcite{deits2014footstep} \footcite{deits2015efficient}.
+	To make the problem become convex, an mixed-integer formulation could be introduced \footcite{richards2002aircraft} \footcite{deits2014footstep} \footcite{deits2015efficient}, which exploits the topological property of the collision-free space. We call it as "mixed-integer", since a list of integer variables is to used to represent the areas where the mobile robot is optimized to pass through. 
 	\begin{figure}
 		\includegraphics[width=0.5\linewidth]{figures/collision-free-mixed-integer.png}
 		\caption{A trajectory in which each linear segment is required to remain entirely within one of the convex obstacle-free regions indicated by the colored boxes. This requirement ensures that the entire trajectory is collision-free.}
 	\end{figure}
-	A list of integer variables is to used to represent the areas where the mobile robot is optimized to pass through. 
 \end{frame}
 
 \begin{frame}{Obstacle avoidance}
-	Sometime we need to describe our robot and obstacles as rigid bodies, this leads us to define the distance between rigid body and obstacle avoidance constraint between them.
+	Sometime we need to describe our robot and obstacles as rigid bodies, this leads us to define the distance between rigid body and obstacle avoidance constraint between them. \href{https://raw.githubusercontent.com/XiaojingGeorgeZhang/OBCA/master/images/TrajBack_ParkingVideo.gif}{[demo]}
 	\begin{figure}
 		\includegraphics[width=0.5\linewidth]{figures/parallel-parking.png}
 		\caption{Dual variables are used to represent the collision-free constraints, see more details in \footcite{zhang2017optimization}.}
@@ -215,16 +224,17 @@
 		& \lambda \geq 0 \\
 		& \phi(q)^T \lambda  = 0
 	\end{align*}
+	where $\lambda$ represents the contact force.
 \end{frame}
 
 \begin{frame}{Contact force}
-	For example, the tension $T(t)$ in a massless cable could be considered as a contact force, assume the length of cable is $l_0$ and the distance between two ends of the cable is $l(t)$, then we have $\phi(q) = l_0 - l(t) \geq 0$ with its complementarity constraint,
+	For example, the tension $T(t)$ in a massless cable could be considered as a contact force. Assume the length of cable is $l_0$ and the distance between two ends of the cable is $l(t)$, then we have $\phi(q) = l_0 - l(t) \geq 0$ with its complementarity constraint,
 	\begin{equation*}
 	T(t) (l_0 - l(t)) = 0
 	\end{equation*}
 	\begin{figure}
 		\includegraphics[width=0.2\linewidth]{figures/aerial-manipulation.png}
-		\caption{Aerial manipulation: quadrotor with a suspended point-mass payload}
+		\caption{Aerial manipulation: quadrotor with a suspended point-mass payload is a hybrid system, where the cable could be taut or slack.}
 	\end{figure}
 \end{frame}
 
@@ -235,6 +245,16 @@
 	\end{itemize}
 
 	Actually, people find that minimum jerk or snap usually performed better than those of other orders in robots for smoothness. 
+\end{frame}
+
+\begin{frame}{Discussion}
+	The optimization-based path planning is still active research topic, there are many existing problems which need to be solved:
+	\begin{itemize}
+		\item multi-agents: e.g. ensure collision-free movements in drone swarm
+		\item safety: e.g. guarantee safety-critical trajectory in a noisy environment (sensor noise, model uncertainty, algorithm bias, etc)
+		\item policy: centralized/decentralized, human-robot interaction
+	\end{itemize}
+	
 \end{frame}
 
 \section{Optimal control}
