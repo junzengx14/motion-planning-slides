@@ -34,8 +34,8 @@
     University of California, Berkeley
 }
 
-\date[February 18th 2020]
-{February 18th 2020}
+\date[February 25th 2020]
+{February 25th 2020}
 
 \AtBeginSection[]
 {
@@ -54,6 +54,38 @@
 \end{frame}
 
 \section{Introduction}
+\begin{frame}{Where we need path planning?}
+	How to consider a robotics research as a systematic problem? Let's think about autonomous driving:
+	\begin{itemize}
+		\item Policy and Strategy:
+		\begin{itemize}
+			\item Global: all safe and comfortable
+			\item Local: need to stay on right side and lane change to another highway. 
+		\end{itemize}
+		\item Vision: detect and analyze neighboring objects with semantic information
+		\item Planner: Plan a collision-free and comfortable trajectory, e.g.
+		\begin{itemize}
+			\item Sample various candidates trajectories
+			\item Select a best one according to some criteria
+			\item Smooth the speed profiles to make it likely to be dynamically feasible
+		\end{itemize}
+		\item Control: Track trajectories with different control laws
+	\end{itemize}
+\end{frame}
+
+\begin{frame}
+	Planning is the bridge between high-level and low-level.
+	\begin{itemize}
+		\item Need to consider noise and disturbance from vision module
+		\item Make the trajectory dynamically-feasible for the control module and other low-level ones.
+	\end{itemize}
+	The performance of path planning is generally determined by two aspects from my personal perspective:
+	\begin{itemize}
+		\item Refresh rate: already a huge time delay from various vision sensors, e.g. you wouldn't expect the refresh rate to be less than 10Hz for autonomous driving.
+		\item Correctness: RRT without smoothness is generally hard to track...
+	\end{itemize}
+\end{frame}
+
 \begin{frame}{Optimal Control vs Optimization-based Path Planning}
 	\begin{itemize}
 		\item Optimal control: linear–quadratic regulator (LQR), model predictive control (MPC), sliding mode control, etc.
@@ -154,6 +186,7 @@
 		\item Dubin’s Curve (e.g. lane change in autonomous driving)
 		\includegraphics[width=0.5\linewidth]{figures/dubin-curve.png}
 	\end{itemize}
+	\red{Smoothness doesn't necessarily guarantee dynamically-feasibility.}
 \end{frame}
 
 \begin{frame}{Optimization-based methods}
@@ -167,7 +200,6 @@
 \begin{frame}{Related work}
 	\begin{itemize}
 		\item "Time Elastic Band" planner (TEB Planner) with ROS integration is introduced \footcite{rosmann2012trajectory} \footcite{rosmann2013efficient}, where non-holonomic kinematics is considered, but roughtly. \href{https://www.youtube.com/watch?v=e1Bw6JOgHME&feature=emb_title}{[demo video in ROS]}
-		\item Some receding horizon methods are also introduced \footcite{kogan2006optimization}.
 		\item For autonomous driving, some special techniques are also proposed \footcite{dolgov2010path} \footcite{ziegler2014trajectory} \footcite{gu2012road}.
 	\end{itemize}
 \end{frame}
@@ -178,7 +210,7 @@
 	\vspace{\baselineskip}
 	How about generating a dynamically-feasible trajectory directly from an optimization-based problem? There are several tricky points to take into account.
 	\begin{itemize}
-		\item Obstacle avoidance
+		\item Obstacle avoidance and Safety
 		\item Hybrid mode switch (contact force)
 		\item Energy efficiency and smoothness (e.g. which kind of cost function we shall choose)
 	\end{itemize}
@@ -212,6 +244,23 @@
 	\end{figure}
 \end{frame}
 
+\begin{frame}{Obstacle avoidance}
+	There are many other famous work:
+	\begin{itemize}
+		\item Sequential Convex Optimization \footcite{schulman2014motion}
+		\item STOMP \footcite{kalakrishnan2011stomp}: deployed on PR2 robot and recommended by ROS. 
+		\item CHOMP \footcite{zucker2013chomp}: consider waypoint optimization and trajectory smoothness 
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{Other work}
+	There are other famous work for special systems:
+	\begin{itemize}
+		\item Swarm path planning for UAV \footcite{roberge2012comparison}
+		\item Baidu Apollo open source planner \footcite{fan2018baidu}
+	\end{itemize}
+\end{frame}
+
 \begin{frame}{Contact force}
 	The intuition is simple: contact force is zero or distance between contact points should be zero. This formulates a complementarity constraint.
 	
@@ -224,17 +273,29 @@
 		& \lambda \geq 0 \\
 		& \phi(q)^T \lambda  = 0
 	\end{align*}
-	where $\lambda$ represents the contact force.
+	where $\lambda$ represents the contact force. \red{No longer need to consider the mode sequences.}
 \end{frame}
 
-\begin{frame}{Contact force}
+\begin{frame}{Examples}
+	Applicable cases:
+	\begin{itemize}
+		\item Manipulation with finger contact
+		\item Legged robotics \href{https://www.youtube.com/watch?v=pH1pDXnCBx4}{[demo]}
+		\begin{figure}
+			\includegraphics[width=0.8\textwidth]{figures/flamingo.png}
+		\end{figure}
+	\end{itemize}
+	
+\end{frame}
+
+\begin{frame}{Example}
 	For example, the tension $T(t)$ in a massless cable could be considered as a contact force. Assume the length of cable is $l_0$ and the distance between two ends of the cable is $l(t)$, then we have $\phi(q) = l_0 - l(t) \geq 0$ with its complementarity constraint,
 	\begin{equation*}
 	T(t) (l_0 - l(t)) = 0
 	\end{equation*}
 	\begin{figure}
-		\includegraphics[width=0.2\linewidth]{figures/aerial-manipulation.png}
-		\caption{Aerial manipulation: quadrotor with a suspended point-mass payload is a hybrid system, where the cable could be taut or slack.}
+		\includegraphics[width=0.6\linewidth]{figures/hybrid_mode_aerial_manipulation.png}
+		\caption{Hybrid modes switches in aerial manipulation \footcite{zeng2020differential}}
 	\end{figure}
 \end{frame}
 
@@ -265,7 +326,7 @@
 		J^* &= \min_{u_i} \sum_{k = 0}^{N} x_{k+1}^T Q x_{k+1} + u_k^T R u_k \\
 		\text{s.t.} \ & x_{k+1} = A x_{k} + B u_{k}
 	\end{align*}
-	There is no \emph{prediction} here, feedback control gain is constant here.
+	There is indeed \emph{prediction} here, but feedback control gain is constant here.
 \end{frame}
 
 
@@ -273,7 +334,7 @@
 	Let's present model prediction control as follow,
 	\begin{align*}
 		J_t^*(x(t)) &= p(x_{t+N}) + \sum_{k = 0}^{N-1} q(x_{t+k}, u_{t+k}) \\
-		\text{s.t.} &= x_{t+k+1} = A x_{t+k} + B u_{t+k}, k = 0,...,N-1 \\
+		\text{s.t.} & x_{t+k+1} = A x_{t+k} + B u_{t+k}, k = 0,...,N-1 \\
 		& x_{t+k} \in \mathcal{X}, u_{t+k} \in \mathcal{U}, k = 0,...,N-1 \\
 		& x_{t+N} \in \mathcal{X}_f \\
 		& x_t = x(t)
@@ -290,6 +351,7 @@
 \begin{frame}{Model Predictive Control}
 	\begin{figure}
 		\includegraphics[width=0.5\linewidth]{figures/mpc-prediction.png}
+		\caption{Constrained Finite Time Optimal Control (from Prof. Borrelli)}
 	\end{figure}
 	Where are the \emph{Predictions}?
 	\begin{itemize}
@@ -313,8 +375,16 @@
 		\item Larger horizon brings a bigger controllable set, but needs more time to calculate the optimization.
 		\item The dynamics constraints could be nonlinear, which will make the problem as a dynamic programming problem.
 		\item There are many variants of MPC: Robust MPC, Adaptive MPC, MPC with obstacle avoidance, etc.
+		\item Recent work about Learning MPC takes safety into account. \href{https://www.youtube.com/watch?v=W4LkQaTvzhI&feature=emb_title}{[demo]}
 	\end{itemize}
 \end{frame}
+
+%\begin{frame}{Connection between Optimal Control and Optimization-based Planning}
+%	There are various work in recent research:
+%	\begin{itemize}
+%		\item Some receding horizon methods are also introduced in path planning \footcite{kogan2006optimization}.
+%	\end{itemize}
+%\end{frame}
 
 
 
